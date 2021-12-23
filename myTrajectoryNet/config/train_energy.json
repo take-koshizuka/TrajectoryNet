@@ -1,0 +1,111 @@
+{
+    "seed" : 13,
+    "niters" : 10000,
+    "save_freq" : 1000,
+    "viz_freq" : 100,
+    "viz_freq_growth" : 100,
+    "val_freq" : 100,
+    "log_freq" : 10,
+    "training_noise" : 0.1,
+    "leaveout_timepoint" : 1,
+    "use_growth" : false,
+    "dataset" : {
+        "name" : "EB-PCA",
+        "embedding_name" : "pca",
+        "max_dim" : 5,
+        "num_workers" : 8
+    },
+    "batch_size" : 1000,
+    "test_batch_size" : 1000,
+    "viz_batch_size" : 1000,
+    "model_g" : {
+        "num_blocks" : 1,
+        "dims" : "64-64-64",
+        "time_scale" : 1.0,
+        "train_T" : false,
+        "divergence_fn": "brute_force", 
+        "nonlinearity" : "tanh",
+        "stochastic" : false,
+        "alpha" : 0.0,
+        "residual" : false,
+        "rademacher" : false,
+        "layer_type" : "concatsquash",
+        "ode_solver" : {
+            "solver" : "dopri5",
+            "atol" : 1e-5,
+            "rtol" : 1e-5,
+            "step_size" : null,
+            "test_solver" : null,
+            "test_atol" : null,
+            "test_rtol" : null
+        },
+        "reg" : {
+            "spectral_norm" : false,
+            "batch_norm" : false,
+            "bn_lag": 0,
+            "l1int" : null,
+            "l2int" : null,
+            "sl2int" : null,
+            "dl2int" : null,
+            "dtl2int" : null,
+            "JFrobint" : null,
+            "JdiagFrobint" : null,
+            "JoffdiagFrobint" : null,
+            "vecint" : null,
+            "use_magnitude" : false,
+            "use_growth" : false,
+            "use_density" : false,
+            "top_k_reg" : 0.0,
+            "interp_reg" : null
+        },
+        "optim" : {
+            "lr" : 1e-3,
+            "weight_decay" : 5e-5
+        }
+    },
+    "model_f" : {
+        "num_blocks" : 1,
+        "dims" : "64-64-64",
+        "time_scale" : 0.5,
+        "train_T" : true,
+        "divergence_fn": "brute_force", 
+        "nonlinearity" : "tanh",
+        "stochastic" : false,
+        "alpha" : 0.0,
+        "residual" : false,
+        "rademacher" : false,
+        "layer_type" : "concatsquash",
+        "ode_solver" : {
+            "solver" : "dopri5",
+            "atol" : 1e-5,
+            "rtol" : 1e-5,
+            "step_size" : null,
+            "test_solver" : null,
+            "test_atol" : null,
+            "test_rtol" : null
+        },
+        "reg" : {
+            "spectral_norm" : false,
+            "batch_norm" : false,
+            "bn_lag": 0,
+            "l1int" : null,
+            "l2int" : 0.1,
+            "sl2int" : null,
+            "dl2int" : null,
+            "dtl2int" : null,
+            "JFrobint" : null,
+            "JdiagFrobint" : null,
+            "JoffdiagFrobint" : null,
+            "vecint" : null,
+            "use_magnitude" : false,
+            "use_growth" : false,
+            "use_density" : false,
+            "top_k_reg" : 0.0,
+            "interp_reg" : null
+        },
+        "optim" : {
+            "lr" : 1e-3,
+            "weight_decay" : 5e-5
+        }
+    }
+}
