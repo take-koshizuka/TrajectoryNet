@@ -57,7 +57,7 @@ def get_transforms(cfg, model_g, model_f, integration_times, device):
     # tは順方向
     def sample_fn(z, logpz=None):
         int_list = [
-            torch.tensor([it - cfg['model_f']['time_scale'], it]).type(torch.float32).to(device)
+            torch.tensor([it - cfg['time_scale'], it]).type(torch.float32).to(device)
             for it in integration_times
         ]
         if logpz is not None:
@@ -74,7 +74,7 @@ def get_transforms(cfg, model_g, model_f, integration_times, device):
     # tは逆方向
     def density_fn(y, logpy=None):
         int_list = [
-            torch.tensor([it - cfg['model_f']['time_scale'], it]).type(torch.float32).to(device)
+            torch.tensor([it - cfg['time_scale'], it]).type(torch.float32).to(device)
             for it in integration_times[::-1]
         ]
         if logpy is not None:
@@ -112,11 +112,10 @@ def compute_loss(cfg, data, model_g, model_f, growth_model, logger, device):
     zs = []
     z = None
     interp_loss = 0.0
+
+    integration_times_g =  torch.tensor([0.0, cfg['model_g']['time_scale']])
     for i, (itp, tp) in enumerate(zip(cfg['int_tps'][::-1], cfg['timepoints'][::-1])):
         # tp counts down from last
-        integration_times = torch.tensor([itp, itp - cfg['model_f']['time_scale']])
-        integration_times = integration_times.type(torch.float32).to(device)
-        # integration_times.requires_grad = True
 
         # load data and add noise
         idx = data.sample_index(cfg['batch_size'], tp)
@@ -127,15 +126,17 @@ def compute_loss(cfg, data, model_g, model_f, growth_model, logger, device):
         y = torch.from_numpy(y).type(torch.float32).to(device)
 
         zero = torch.zeros(y.shape[0], 1).to(y)
-        x, delta_logpypx = model_g(y, zero)
+        
+        x, delta_logpypx = model_g(y, zero, integration_times=integration_times_g)
         deltas_pypx.append(delta_logpypx)
 
         if i > 0:
             x = torch.cat((z, x))
-            zs.append(z) 
+            zs.append(z)
 
+        integration_times_f = torch.tensor([itp, itp - cfg['time_scale']]).type(torch.float32).to(device)
         zero = torch.zeros(x.shape[0], 1).to(x)
-        z, delta_logpx = model_f(x, zero, integration_times=integration_times)
+        z, delta_logpx = model_f(x, zero, integration_times=integration_times_f)
         deltas_px.append(delta_logpx)
         
         # transform to previous timepoint
@@ -517,7 +518,7 @@ def main(args):
     # as some timepoints may be left out for validation etc.
     # 時刻0: ランダムノイズ, 時刻 time_scale: 初期状態(t=0), 時刻 k * time_scale: 状態(k=t+1)
     
-    cfg['int_tps'] = (np.arange(max(timepoints) + 1) + 1.0) * cfg['model_f']['time_scale']
+    cfg['int_tps'] = (np.arange(max(timepoints) + 1) + 1.0) * cfg['time_scale']
 
     # regularization_fns: regularization関数, regularization_coeffs: regularizationの係数
     regularization_fns_g, regularization_coeffs_g = create_regularization_fns(cfg['model_g']['reg'])

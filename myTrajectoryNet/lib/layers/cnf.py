@@ -75,6 +75,9 @@ class CNF(nn.Module):
         z_t, logpz_t = state_t[:2]
         self.regularization_states = state_t[2:]
 
+        if integration_times[0] > integration_times[-1]:
+            self.regularization_states = tuple(-(reg_state) for reg_state in self.regularization_states)
+
         if logpz is not None:
             return z_t, logpz_t
         else:

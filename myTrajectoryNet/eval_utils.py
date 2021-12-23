@@ -158,22 +158,23 @@ def evaluate_kantorovich_v2(device, cfg, data, model_g, model_f, growth_model=No
 
     # Backward pass through the model / growth model
     with torch.no_grad():
-        int_times = torch.tensor(
+        integration_times_g =  torch.tensor([0.0, cfg['model_g']['time_scale']])
+        integration_times_f = torch.tensor(
             [
-                cfg['int_tps'][cfg['leaveout_timepoint']],
                 cfg['int_tps'][cfg['leaveout_timepoint'] + 1],
+                cfg['int_tps'][cfg['leaveout_timepoint']],
             ]
-        )
-        int_times = int_times.type(torch.float32).to(device)
+        ).type(torch.float32).to(device)
         next_y = data.get_data()[
             data.get_times() == cfg['leaveout_timepoint'] + 1
         ]
         next_y = torch.from_numpy(next_y).type(torch.float32).to(device)
+        
+        next_x = model_g(next_y, integration_times=integration_times_g, reverse=False)
 
-        next_x = model_g(next_y, reverse=False)
         zero = torch.zeros(next_x.shape[0], 1).to(device)
-        x_backward, _ = model_f.chain[0](next_x, zero, integration_times=int_times)
-        y_backward = model_g(x_backward, reverse=True)
+        x_backward, _ = model_f.chain[0](next_x, zero, integration_times=integration_times_f)
+        y_backward = model_g(x_backward, integration_times=integration_times_g, reverse=True)
         y_backward = y_backward.cpu().numpy()
 
 
@@ -182,18 +183,16 @@ def evaluate_kantorovich_v2(device, cfg, data, model_g, model_f, growth_model=No
         ]
         # 後ろから
         prev_y = torch.from_numpy(prev_y).type(torch.float32).to(device)
-        int_times = torch.tensor(
+        integration_times_f = torch.tensor(
             [
-                cfg['int_tps'][cfg['leaveout_timepoint'] - 1],
                 cfg['int_tps'][cfg['leaveout_timepoint']],
+                cfg['int_tps'][cfg['leaveout_timepoint'] - 1],
             ]
-        )
-        prev_x = model_g(prev_y, reverse=False)
+        ).type(torch.float32).to(device)
+        prev_x = model_g(prev_y, integration_times=integration_times_g, reverse=False)
         zero = torch.zeros(prev_x.shape[0], 1).to(device)
-        x_forward, _ = model_f.chain[0](
-            prev_x, zero, integration_times=int_times, reverse=True
-        )
-        y_forward = model_g(x_forward, reverse=True)
+        x_forward, _ = model_f.chain[0](prev_x, zero, integration_times=integration_times_f, reverse=True)
+        y_forward = model_g(x_forward, integration_times=integration_times_g, reverse=True)
         y_forward = y_forward.cpu().numpy()
 
         emds = []
@@ -235,7 +234,7 @@ def evaluate_kantorovich(device, cfg, data, model_g, model_f, growth_model=None,
                 prev = 0.0
             else:
                 prev = cfg['int_tps'][i - 1]
-            int_list.append(torch.tensor([prev, it]).type(torch.float32).to(device))
+            int_list.append(torch.tensor([it, prev]).type(torch.float32).to(device))
 
         # int_list = [
         #    torch.tensor([it - args.time_scale, it]).type(torch.float32).to(device)
@@ -243,13 +242,15 @@ def evaluate_kantorovich(device, cfg, data, model_g, model_f, growth_model=None,
         # ]
         print(cfg['int_tps'])
 
-        logpz = data.base_density()(z_samples)
+        # logpz = data.base_density()(z_samples)
         z = z_samples
         ys = []
         growthrates = [torch.ones(z_samples.shape[0], 1).to(device)]
+
+        integration_times_g =  torch.tensor([0.0, cfg['model_g']['time_scale']])
         for it, tp in zip(int_list, cfg['timepoints']):
             z = model_f(z, integration_times=it, reverse=True)
-            y = model_g(z, reverse=True)
+            y = model_g(z, integration_times=integration_times_g, reverse=True)
             ys.append(y.cpu().numpy())
             #if args.use_growth:
             #    time_state = tp * torch.ones(z.shape[0], 1).to(device)
@@ -299,7 +300,6 @@ def evaluate_kantorovich(device, cfg, data, model_g, model_f, growth_model=None,
 
         emds = np.array(emds)
         return ys, emds
-
 
 def evaluate(device, cfg, data, model_g, model_f, growth_model=None):
     """ Eval the model via negative log likelihood on all timepoints

@@ -15,6 +15,7 @@
         "max_dim" : 5,
         "num_workers" : 8
     },
+    "time_scale" : 0.5,
     "batch_size" : 1000,
     "test_batch_size" : 1000,
     "viz_batch_size" : 1000,
@@ -67,7 +68,7 @@
         "num_blocks" : 1,
         "dims" : "64-64-64",
         "time_scale" : 0.5,
-        "train_T" : true,
+        "train_T" : false,
         "divergence_fn": "brute_force", 
         "nonlinearity" : "tanh",
         "stochastic" : false,
