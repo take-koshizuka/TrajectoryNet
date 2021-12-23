@@ -114,7 +114,7 @@ def compute_loss(cfg, data, model_g, model_f, growth_model, logger, device):
     interp_loss = 0.0
     for i, (itp, tp) in enumerate(zip(cfg['int_tps'][::-1], cfg['timepoints'][::-1])):
         # tp counts down from last
-        integration_times = torch.tensor([itp - cfg['model_f']['time_scale'], itp])
+        integration_times = torch.tensor([itp, itp - cfg['model_f']['time_scale']])
         integration_times = integration_times.type(torch.float32).to(device)
         # integration_times.requires_grad = True
 
