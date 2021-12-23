@@ -93,7 +93,7 @@ def get_transforms(cfg, model_g, model_f, integration_times, device):
     return sample_fn, density_fn
 
 
-def compute_loss(cfg, data, model_g, model_f, growth_model, logger, device):
+def compute_loss(cfg, data, model_g, model_f, growth_model, logger, device, mode='train'):
     """
     Compute loss by integrating backwards from the last time step
     At each time step integrate back one time step, and concatenate that
@@ -118,9 +118,9 @@ def compute_loss(cfg, data, model_g, model_f, growth_model, logger, device):
         # tp counts down from last
 
         # load data and add noise
-        idx = data.sample_index(cfg['batch_size'], tp)
+        idx = data.sample_index(cfg['batch_size'], tp, type=mode)
         # x[t] -> x[t-1] -> ... 
-        y = data.get_data()[idx]
+        y = data.get_data(mode)[idx]
         if cfg['training_noise'] > 0.0:
             y += np.random.randn(*y.shape) * cfg['training_noise']
         y = torch.from_numpy(y).type(torch.float32).to(device)
@@ -241,8 +241,8 @@ def train(cfg, data, model_g, model_f, growth_model, regularization_coeffs_g, re
     end = time.time()
     for itr in range(1, cfg['niters'] + 1):
         model_g.train()
-        optimizer_g.zero_grad()
         model_f.train()
+        optimizer_g.zero_grad()
         optimizer_f.zero_grad()
 
         # Train
@@ -252,7 +252,7 @@ def train(cfg, data, model_g, model_f, growth_model, regularization_coeffs_g, re
         if cfg['model_f']['reg']['spectral_norm']:
             spectral_norm_power_iteration(model_f, 1)
 
-        loss = compute_loss(cfg, data, model_g, model_f, growth_model, logger, device)
+        loss = compute_loss(cfg, data, model_g, model_f, growth_model, logger, device, mode='train')
         loss_meter.update(loss.item())
 
         if len(regularization_coeffs_g) > 0:
@@ -371,7 +371,7 @@ def train(cfg, data, model_g, model_f, growth_model, regularization_coeffs_g, re
 def train_eval(cfg, data, model_g, model_f, growth_model, itr, best_loss, logger, out_dir, device):
     model_g.eval()
     model_f.eval()
-    test_loss = compute_loss(cfg, data, model_g, model_f, growth_model, logger, device)
+    test_loss = compute_loss(cfg, data, model_g, model_f, growth_model, logger, device, mode='val')
     test_nfe_g = count_nfe(model_g)
     test_nfe_f = count_nfe(model_f)
 

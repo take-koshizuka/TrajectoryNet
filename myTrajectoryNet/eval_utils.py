@@ -165,7 +165,7 @@ def evaluate_kantorovich_v2(device, cfg, data, model_g, model_f, growth_model=No
                 cfg['int_tps'][cfg['leaveout_timepoint']],
             ]
         ).type(torch.float32).to(device)
-        next_y = data.get_data()[
+        next_y = data.get_data('all')[
             data.get_times() == cfg['leaveout_timepoint'] + 1
         ]
         next_y = torch.from_numpy(next_y).type(torch.float32).to(device)
@@ -178,7 +178,7 @@ def evaluate_kantorovich_v2(device, cfg, data, model_g, model_f, growth_model=No
         y_backward = y_backward.cpu().numpy()
 
 
-        prev_y = data.get_data()[
+        prev_y = data.get_data('all')[
             data.get_times() == cfg['leaveout_timepoint'] - 1
         ]
         # 後ろから
@@ -197,7 +197,7 @@ def evaluate_kantorovich_v2(device, cfg, data, model_g, model_f, growth_model=No
 
         emds = []
         for tpi in [cfg['leaveout_timepoint']]:
-            original_data = data.get_data()[
+            original_data = data.get_data('all')[
                 data.get_times() == cfg['timepoints'][tpi]
             ]
             emds.append(earth_mover_distance(y_backward, original_data))
@@ -271,7 +271,7 @@ def evaluate_kantorovich(device, cfg, data, model_g, model_f, growth_model=None,
         # plt.scatter(z[:, 0], z[:, 1], s=0.1, alpha=0.5)
         emds = []
         for tpi in range(len(cfg['timepoints'])):
-            original_data = data.get_data()[
+            original_data = data.get_data('all')[
                 data.get_times() == cfg['timepoints'][tpi]
             ]
             if cfg['use_growth']:

@@ -125,6 +125,7 @@ class SCData(object):
         # Generated Circle datasets
         name = cfg['name']
         max_dim = cfg['max_dim']
+        val_size = cfg['val_size']
         if name == "CIRCLE":
             return CircleTestData()
         if name == "CIRCLE2":
@@ -162,7 +163,7 @@ class SCData(object):
         if name == "EB-PHATE":
             return EBData()
         if name == "EB-PCA":
-            return EBData("pcs", max_dim=max_dim)
+            return EBData("pcs", max_dim=max_dim, val_size=val_size)
 
         if name == "CHAFFER":
             return ChafferData()
@@ -273,7 +274,7 @@ class CustomData(SCData):
 
 class EBData(SCData):
     def __init__(
-        self, embedding_name="phate", max_dim=None, use_velocity=True, version=5
+        self, embedding_name="phate", max_dim=None, val_size=0.1, use_velocity=True, version=5, 
     ):
         super().__init__()
         self.embedding_name = embedding_name
@@ -282,7 +283,9 @@ class EBData(SCData):
             data_file = "../data/eb_velocity_v5.npz"
         else:
             raise ValueError("Unknown Version number")
+        self.val_size = val_size
         self.load(data_file, max_dim)
+        
 
     def load(self, data_file, max_dim):
         self.data_dict = np.load(data_file, allow_pickle=True)
@@ -296,7 +299,6 @@ class EBData(SCData):
         assert self.labels.shape[0] == self.ncells
         # Scale so that embedding is normally distributed
         self.data = scaler.transform(embedding)
-
         if self.has_velocity() and self.use_velocity:
             if self.embedding_name == "pcs":
                 delta = self.data_dict["pcs_delta"]
@@ -314,17 +316,39 @@ class EBData(SCData):
             if self.has_velocity() and self.use_velocity:
                 self.velocity = self.velocity[:, :max_dim]
 
+        self._split_train_val()
+        
+    def _split_train_val(self):
+        times = self.get_unique_times()
+        min_n = min([ list(self.labels).count(label) for label in times ])
+        self.val_n = int(min_n * self.val_size)
+        shape = self.get_shape()
+        self.train_data =  np.vstack([ self.data[self.labels == label][:-self.val_n]  for label in times ])
+        self.val_data =  np.vstack([ self.data[self.labels == label][-self.val_n:]  for label in times ])
+        self.train_labels = np.vstack([ self.labels[self.labels == label][:-self.val_n].reshape(-1, 1)  for label in times ]).flatten()
+        self.val_labels = np.vstack([ self.labels[self.labels == label][-self.val_n:].reshape(-1, 1) for label in times ]).flatten()
+
     def has_velocity(self):
         return True
 
     def known_base_density(self):
         return False
 
-    def get_data(self):
-        return self.data
+    def get_data(self, type='train'):
+        if type == 'train':
+            return self.train_data
+        elif type == 'val':
+            return self.val_data
+        else:
+            return self.data
 
-    def get_times(self):
-        return self.labels
+    def get_times(self, type='train'):
+        if type == 'train':
+            return self.train_labels
+        elif type == 'val':
+            return self.val_labels
+        else:
+            return self.labels
 
     def get_unique_times(self):
         return np.unique(self.labels)
@@ -335,8 +359,13 @@ class EBData(SCData):
     def get_shape(self):
         return [self.data.shape[1]]
 
-    def get_ncells(self):
-        return self.ncells
+    def get_ncells(self, type='train'):
+        if type == 'train':
+            return len(self.train_labels)
+        elif type == 'val':
+            return len(self.val_labels)
+        else:
+            return self.ncells
 
     def leaveout_timepoint(self, tp):
         """ Takes a timepoint label to leaveout
@@ -352,10 +381,14 @@ class EBData(SCData):
         self.velocity = self.velocity[mask]
         self.ncells = np.sum(mask)
 
-    def sample_index(self, n, label_subset):
-        arr = np.arange(self.ncells)[self.labels == label_subset]
+    def sample_index(self, n, label_subset, type='train'):
+        if type == 'train':
+            arr = np.arange(len(self.train_labels))[self.train_labels == label_subset]
+        elif type == 'val':
+            arr = np.arange(len(self.val_labels))[self.val_labels == label_subset]
+        else:
+            arr = np.arange(self.ncells)[self.labels == label_subset]
         return np.random.choice(arr, size=n)
-
 
 class ChafferData(EBData):
     def __init__(self, embedding_name="pcs", max_dim=6, use_velocity=False, version=2):
