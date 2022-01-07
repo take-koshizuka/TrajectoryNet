@@ -73,7 +73,7 @@ def get_transforms(device, args, model, integration_times):
     return sample_fn, density_fn
 
 
-def compute_loss(device, args, model, growth_model, logger, full_data):
+def compute_loss(device, args, model, growth_model, logger, full_data, mode='train'):
     """
     Compute loss by integrating backwards from the last time step
     At each time step integrate back one time step, and concatenate that
@@ -98,8 +98,8 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         # integration_times.requires_grad = True
 
         # load data and add noise
-        idx = args.data.sample_index(args.batch_size, tp)
-        x = args.data.get_data()[idx]
+        idx = args.data.sample_index(args.batch_size, tp, type=mode)
+        x = args.data.get_data(mode)[idx]
         if args.training_noise > 0.0:
             x += np.random.randn(*x.shape) * args.training_noise
         x = torch.from_numpy(x).type(torch.float32).to(device)
@@ -252,7 +252,7 @@ def train(
         if args.spectral_norm:
             spectral_norm_power_iteration(model, 1)
 
-        loss = compute_loss(device, args, model, growth_model, logger, full_data)
+        loss = compute_loss(device, args, model, growth_model, logger, full_data, mode='train')
         loss_meter.update(loss.item())
 
         if len(regularization_coeffs) > 0:
@@ -326,7 +326,7 @@ def train(
 
 def train_eval(device, args, model, growth_model, itr, best_loss, logger, full_data):
     model.eval()
-    test_loss = compute_loss(device, args, model, growth_model, logger, full_data)
+    test_loss = compute_loss(device, args, model, growth_model, logger, full_data, mode='val')
     test_nfe = count_nfe(model)
     log_message = "[TEST] Iter {:04d} | Test Loss {:.6f} |" " NFE {:.0f}".format(
         itr, test_loss, test_nfe
@@ -455,9 +455,7 @@ def main(args):
     args.int_tps = (np.arange(max(args.timepoints) + 1) + 1.0) * args.time_scale
 
     regularization_fns, regularization_coeffs = create_regularization_fns(args)
-    model = build_model_tabular(args, args.data.get_shape()[0], regularization_fns).to(
-        device
-    )
+    model = build_model_tabular(args, args.data.get_shape()[0], regularization_fns).to(device)
     growth_model = None
     if args.use_growth:
         if args.leaveout_timepoint == -1:

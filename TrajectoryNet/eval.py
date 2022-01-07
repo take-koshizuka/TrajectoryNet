@@ -362,16 +362,18 @@ def main(args):
         else:
             raise RuntimeError('Unknown timepoint %d' % args.leaveout_timepoint)
         args.int_tps[lt] = (1 - factor) * args.int_tps[lt-1] + factor * args.int_tps[lt+1]
+
     losses = eval_utils.evaluate_kantorovich_v2(device, args, model)
     losses_list.append(losses)
     print(np.array(losses_list))
-    np.save(os.path.join(args.save, 'emd_list'), np.array(losses_list))
+    np.save(os.path.join(args.dir, 'emd_v2.npy'), np.array(losses_list))
+
     #zs = np.load(os.path.join(args.save, 'backward_trajectories'))
-    # losses = eval_utils.evaluate_mse(device, args, model)
-    losses = eval_utils.evaluate_kantorovich(device, args, model)
-    print(losses)
-    # eval_utils.generate_samples(device, args, model, growth_model, timepoint=args.timepoints[-1])
-    # eval_utils.calculate_path_length(device, args, model, data, args.int_tps[-1])
+    #losses = eval_utils.evaluate_mse(device, args, model)
+    ys, emd = eval_utils.evaluate_kantorovich(device, args, model)
+    print(emd)
+    np.save(os.path.join(args.dir, 'samples.npy'), np.array(ys))
+    np.save(os.path.join(args.dir, 'emds.npy'), np.array(emd))
 
 
 if __name__ == "__main__":

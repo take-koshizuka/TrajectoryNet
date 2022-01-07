@@ -33,7 +33,7 @@ def generate_samples(device, args, model, growth_model, n=10000, timepoint=None)
         np.save(os.path.join(args.save, "samples_%0.2f.npy" % timepoint), z)
         logpz = logpz.cpu().numpy()
         plt.scatter(z[:, 0], z[:, 1], s=0.1, alpha=0.5)
-        original_data = args.data.get_data()[args.data.get_times() == timepoint]
+        original_data = args.data.get_data('all')[args.data.get_times('all') == timepoint]
         idx = np.random.randint(original_data.shape[0], size=n)
         samples = original_data[idx, :]
         plt.scatter(samples[:, 0], samples[:, 1], alpha=0.5)
@@ -164,12 +164,12 @@ def evaluate_kantorovich_v2(device, args, model, growth_model=None):
             ]
         )
         int_times = int_times.type(torch.float32).to(device)
-        next_z = args.data.get_data()[
-            args.data.get_times() == args.leaveout_timepoint + 1
+        next_z = args.data.get_data('all')[
+            args.data.get_times('all') == args.leaveout_timepoint + 1
         ]
         next_z = torch.from_numpy(next_z).type(torch.float32).to(device)
-        prev_z = args.data.get_data()[
-            args.data.get_times() == args.leaveout_timepoint - 1
+        prev_z = args.data.get_data('all')[
+            args.data.get_times('all') == args.leaveout_timepoint - 1
         ]
         prev_z = torch.from_numpy(prev_z).type(torch.float32).to(device)
         zero = torch.zeros(next_z.shape[0], 1).to(device)
@@ -189,8 +189,8 @@ def evaluate_kantorovich_v2(device, args, model, growth_model=None):
 
         emds = []
         for tpi in [args.leaveout_timepoint]:
-            original_data = args.data.get_data()[
-                args.data.get_times() == args.timepoints[tpi]
+            original_data = args.data.get_data('all')[
+                args.data.get_times('all') == args.timepoints[tpi]
             ]
             emds.append(earth_mover_distance(z_backward, original_data))
             emds.append(earth_mover_distance(z_forward, original_data))
@@ -255,14 +255,13 @@ def evaluate_kantorovich(device, args, model, growth_model=None, n=10000):
             growthrates = torch.stack(growthrates)
             growthrates = growthrates.cpu().numpy()
             np.save(os.path.join(args.save, "sample_weights.npy"), growthrates)
-        np.save(os.path.join(args.save, "samples.npy"), zs)
 
         # logpz = logpz.cpu().numpy()
         # plt.scatter(z[:, 0], z[:, 1], s=0.1, alpha=0.5)
         emds = []
         for tpi in range(len(args.timepoints)):
-            original_data = args.data.get_data()[
-                args.data.get_times() == args.timepoints[tpi]
+            original_data = args.data.get_data('all')[
+                args.data.get_times('all') == args.timepoints[tpi]
             ]
             if args.use_growth:
                 emds.append(
@@ -289,9 +288,7 @@ def evaluate_kantorovich(device, args, model, growth_model=None, n=10000):
                     emds.append(earth_mover_distance(zs[tpi], original_data))
 
         emds = np.array(emds)
-        print(emds)
-        np.save(os.path.join(args.save, "emds.npy"), emds)
-        return emds
+        return zs, emds
 
 
 def evaluate(device, args, model, growth_model=None):
@@ -318,7 +315,7 @@ def evaluate(device, args, model, growth_model=None):
         integration_times = torch.tensor([itp - args.time_scale, itp])
         integration_times = integration_times.type(torch.float32).to(device)
 
-        x = args.data.get_data()[args.data.get_times() == tp]
+        x = args.data.get_data('all')[args.data.get_times('all') == tp]
         x = torch.from_numpy(x).type(torch.float32).to(device)
 
         if i > 0:
@@ -345,7 +342,7 @@ def evaluate(device, args, model, growth_model=None):
     losses = []
     logps = [logpz]
     for i, (delta_logp, tp) in enumerate(zip(deltas[::-1], args.timepoints)):
-        n_cells_in_tp = np.sum(args.data.get_times() == tp)
+        n_cells_in_tp = np.sum(args.data.get_times('all') == tp)
         logpx = logps[-1] - delta_logp
         if use_growth:
             logpx += torch.log(growthrates[i])
