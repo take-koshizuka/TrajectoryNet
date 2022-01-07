@@ -366,14 +366,14 @@ def main(args):
     losses = eval_utils.evaluate_kantorovich_v2(device, args, model)
     losses_list.append(losses)
     print(np.array(losses_list))
-    np.save(os.path.join(args.dir, 'emd_v2.npy'), np.array(losses_list))
+    np.save(os.path.join(args.save, 'emd_v2.npy'), np.array(losses_list))
 
     #zs = np.load(os.path.join(args.save, 'backward_trajectories'))
     #losses = eval_utils.evaluate_mse(device, args, model)
     ys, emd = eval_utils.evaluate_kantorovich(device, args, model)
     print(emd)
-    np.save(os.path.join(args.dir, 'samples.npy'), np.array(ys))
-    np.save(os.path.join(args.dir, 'emds.npy'), np.array(emd))
+    np.save(os.path.join(args.save, 'samples.npy'), np.array(ys))
+    np.save(os.path.join(args.save, 'emds.npy'), np.array(emd))
 
 
 if __name__ == "__main__":

@@ -231,6 +231,7 @@ def train(
     nfef_meter = utils.RunningAverageMeter(0.93)
     nfeb_meter = utils.RunningAverageMeter(0.93)
     tt_meter = utils.RunningAverageMeter(0.93)
+    
     full_data = None
 
     best_loss = float("inf")
