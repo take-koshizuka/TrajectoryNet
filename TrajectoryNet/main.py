@@ -231,14 +231,7 @@ def train(
     nfef_meter = utils.RunningAverageMeter(0.93)
     nfeb_meter = utils.RunningAverageMeter(0.93)
     tt_meter = utils.RunningAverageMeter(0.93)
-
-    full_data = (
-        torch.from_numpy(
-            args.data.get_data()[args.data.get_times() != args.leaveout_timepoint]
-        )
-        .type(torch.float32)
-        .to(device)
-    )
+    full_data = None
 
     best_loss = float("inf")
     if args.use_growth:
